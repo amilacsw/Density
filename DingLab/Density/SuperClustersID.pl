@@ -286,6 +286,7 @@ close (OUT);
 ############################  Plotting  #################################
 
 system ("Rscript ClustersLines.R $inputFile ./Results/$ARGV[0].SuperClustersID.plot SuperClustersID.$ARGV[0].pdf $Epsilon $MinPts");
+system ("Rscript HorizClustersLines.R $inputFile ./Results/$ARGV[0].SuperClustersID.plot SuperClustersID.$ARGV[0].Horiz.pdf $Epsilon $MinPts");
 print "Done.\n";
 
 #########################################################################

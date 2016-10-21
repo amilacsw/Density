@@ -58,7 +58,7 @@ print "Done getting mapping locations.\n";
 
 #################  Clusters present in the given PDB structure  #####################
 
-my $OutFile1 = "./Results/SuperClustersID.ARGV[0].presentClusters";
+my $OutFile1 = "./Results/SuperClustersID.$ARGV[0].presentClusters";
 open (OUT, ">$OutFile1");
 
 for (my $i = 0; $i < scalar @InputClusters; $i++) { 
