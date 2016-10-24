@@ -73,7 +73,7 @@ close (OUT);
 print "Preparing the pymol script\n";
 
 my $fh = new FileHandle;
-my $outFilename = "./Results/$ARGV[0].pml";
+my $outFilename = "./Results/$ARGV[0].$PDB.pml";
 $fh->open( $outFilename , "w"  );
 $fh->print( "reinitialize everything;\n" );
 $fh->print( "load http://www.rcsb.org/pdb/files/".$PDB.".pdb;\n" );
