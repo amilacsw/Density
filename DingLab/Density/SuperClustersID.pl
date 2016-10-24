@@ -62,7 +62,7 @@ for (my $i = 1; $i < scalar @InitialSet; $i++) {
 # Go inside each super cluster and start scanning from smallest r(x):
 my $idSuperCluster = -1;
 
-foreach my $superC ( keys $Clusters{SuperClusters} ) {
+foreach my $superC ( sort { $Clusters{SuperClusters}{$a} <=> $Clusters{SuperClusters}{$b} } keys $Clusters{SuperClusters} ) {
 	#print "Start of SC = $superC, $InitialSet[$superC][0]\n";
 	my $MinRDat = $superC; # Lowest r(x) is at this x value.
 	for (my $i = $superC; $i <= $Clusters{SuperClusters}{$superC} ; $i++) {
