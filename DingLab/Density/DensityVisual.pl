@@ -120,17 +120,17 @@ for (my $i = $PrevEntry; $i < scalar @InputClusters; $i++) {
 			else {
 				if ($CurrentSub != 0) { # previous entry was NOT the last entry of a super cluster 
 					if ($InputClusters[$PrevEntry][5] eq 1 || $InputClusters[$PrevEntry][5] eq 2) { # No clusters covered below by this sub
-						$fh->print( "create S.".$InputClusters[$PrevEntry][0].", ".$InputClusters[$PrevEntry][0]."\n" ); 
-						$fh->print( "set surface_color, ".$currentColor.", S.".$InputClusters[$PrevEntry][0]."\n" );
-						$fh->print( "show surface, S.".$InputClusters[$PrevEntry][0]."\n" ); 
+						$fh->print( "create S.".$currentColor."_".$InputClusters[$PrevEntry][0].", ".$currentColor."_".$InputClusters[$PrevEntry][0]."\n" ); 
+						$fh->print( "set surface_color, ".$currentColor.", S.".$currentColor."_".$InputClusters[$PrevEntry][0]."\n" );
+						$fh->print( "show surface, S.".$currentColor."_".$InputClusters[$PrevEntry][0]."\n" ); 
 					}
 					else {
 						foreach my $sub (split(":",$InputClusters[$PrevEntry][5])) {
-							$fh->print( "sele ".$InputClusters[$PrevEntry][0].", (".$InputClusters[$PrevEntry][0].", ".$sub.");\n" ); 
+							$fh->print( "sele ".$currentColor."_".$InputClusters[$PrevEntry][0].", (".$currentColor."_".$InputClusters[$PrevEntry][0].", ".$this->{ClusterColors}->{$sub}."_".$sub.");\n" ); 
 						}
-						$fh->print( "create S.".$InputClusters[$PrevEntry][0].", ".$InputClusters[$PrevEntry][0]."\n" ); 
-						$fh->print( "set surface_color, ".$currentColor.", S.".$InputClusters[$PrevEntry][0]."\n" );
-						$fh->print( "show surface, S.".$InputClusters[$PrevEntry][0]."\n" );							
+						$fh->print( "create S.".$currentColor."_".$InputClusters[$PrevEntry][0].", ".$currentColor."_".$InputClusters[$PrevEntry][0]."\n" ); 
+						$fh->print( "set surface_color, ".$currentColor.", S.".$currentColor."_".$InputClusters[$PrevEntry][0]."\n" );
+						$fh->print( "show surface, S.".$currentColor."_".$InputClusters[$PrevEntry][0]."\n" );							
 					}
 					$CurrentLevel = $IDs[1];
 					$CurrentSub = $IDs[2];
@@ -194,6 +194,9 @@ sub test3 {
 
 sub setColors {
 	my ( $variant, $ClusterArrayRef, $this, $SecondDigit, $fh, $currentColor ) = @_; # $ClusterArrayRef = $InputClusters[$i]
+	$variant =~ /(\w+)\:\D\.(\D+\d+)\D/g;
+	my $GeneName = $1;
+	my $MutName = $2;
 
 	foreach my $key (keys %{$this->{mutations}->{$variant}}) {
 		my @ChainRes = split(":", $key);
@@ -201,30 +204,38 @@ sub setColors {
 		my $res = shift @ChainRes;
 
 		if ($SecondDigit == 0) { # super cluster
+			#$fh->print( "sele ".$currentColor."_".$GeneName."_".$MutName."_".$chain.", (resi ".$res." and chain ".$chain.");\n" ); #CHECK whether needed
 			$fh->print( "color ".$currentColor.", (resi ".$res." and chain ".$chain.");\n" );
 			#$fh->print( "show spheres, (resi ".$res." and chain ".$chain.");\n" );
 		}
 		elsif ($SecondDigit == 1) { # first level
 			$fh->print( "color ".$currentColor.", (resi ".$res." and chain ".$chain.");\n" );
 			$fh->print( "show spheres, (resi ".$res." and chain ".$chain.");\n" );
-			$fh->print( "sele ".$ClusterArrayRef->[0].", (".$ClusterArrayRef->[0].", resi ".$res." and chain ".$chain.");\n" ); # add to the object named by the cluster ID
+			$fh->print( "sele ".$currentColor."_".$GeneName."_".$MutName."_".$chain.", (resi ".$res." and chain ".$chain.");\n" );
+			$fh->print( "sele ".$currentColor."_".$ClusterArrayRef->[0].", (".$currentColor."_".$ClusterArrayRef->[0].", ".$currentColor."_".$GeneName."_".$MutName."_".$chain.");\n" ); # add to the object named by the cluster ID
 			$this->{mutations}->{$variant}->{$chain.":".$res} = 1; #$ClusterArrayRef->[6] = 1; # set as processed
+			$this->{ClusterColors}->{$ClusterArrayRef->[0]} = $currentColor; # To keep track of the color of a given cluster ID. Usefull in setting surfaces
 		}
 		elsif ($SecondDigit > 1) { # higher levels   
 			if ( $ClusterArrayRef->[5] eq 2 ) { # this subcluster doesn't cover anything below it (no need to check PROCESSED)
 				$fh->print( "color ".$currentColor.", (resi ".$res." and chain ".$chain.");\n" );
 				$fh->print( "show spheres, (resi ".$res." and chain ".$chain.");\n" );
-				$fh->print( "sele ".$ClusterArrayRef->[0].", (".$ClusterArrayRef->[0].", resi ".$res." and chain ".$chain.");\n" ); # add to the object named by the cluster ID
+				$fh->print( "sele ".$currentColor."_".$GeneName."_".$MutName."_".$chain.", (resi ".$res." and chain ".$chain.");\n" );
+				$fh->print( "sele ".$currentColor."_".$ClusterArrayRef->[0].", (".$currentColor."_".$ClusterArrayRef->[0].", ".$currentColor."_".$GeneName."_".$MutName."_".$chain.");\n" ); # add to the object named by the cluster ID
 				$this->{mutations}->{$variant}->{$chain.":".$res} = 1; #$ClusterArrayRef->[6] = 1; # set as processed
+				$this->{ClusterColors}->{$ClusterArrayRef->[0]} = $currentColor; # To keep track of the color of a given cluster ID. Usefull in setting surfaces
 			}
 			elsif ( $ClusterArrayRef->[5] ne 2 ) {
 				if ($this->{mutations}->{$variant}->{$chain.":".$res} == 0) {
 					$fh->print( "color ".$currentColor.", (resi ".$res." and chain ".$chain.");\n" );
 					$fh->print( "show spheres, (resi ".$res." and chain ".$chain.");\n" );
-					$fh->print( "sele ".$ClusterArrayRef->[0].", (".$ClusterArrayRef->[0].", resi ".$res." and chain ".$chain.");\n" ); # add to the object named by the cluster ID
+					$fh->print( "sele ".$currentColor."_".$GeneName."_".$MutName."_".$chain.", (resi ".$res." and chain ".$chain.");\n" );
+					$fh->print( "sele ".$currentColor."_".$ClusterArrayRef->[0].", (".$currentColor."_".$ClusterArrayRef->[0].", ".$currentColor."_".$GeneName."_".$MutName."_".$chain.");\n" ); # add to the object named by the cluster ID
 					$this->{mutations}->{$variant}->{$chain.":".$res} = 1; #$ClusterArrayRef->[6] = 1; # set as processed
+					$this->{ClusterColors}->{$ClusterArrayRef->[0]} = $currentColor; # To keep track of the color of a given cluster ID. Usefull in setting surfaces
 				}
-				else {$fh->print( "sele ".$ClusterArrayRef->[0].", (".$ClusterArrayRef->[0].", resi ".$res." and chain ".$chain.");\n" );} # add to the object named by the cluster ID				
+				else {$fh->print( "sele ".$currentColor."_".$ClusterArrayRef->[0].", (".$currentColor."_".$ClusterArrayRef->[0].", resi ".$res." and chain ".$chain.");\n" );} # add to the object named by the cluster ID	
+				$this->{ClusterColors}->{$ClusterArrayRef->[0]} = $currentColor; # To keep track of the color of a given cluster ID. Usefull in setting surfaces			
 			}
 		}		
 	}	
@@ -232,6 +243,9 @@ sub setColors {
 
 sub setFirstColors {
 	my ( $variant, $ClusterArrayRef, $this, $SecondDigit, $fh, $currentColor ) = @_; # $ClusterArrayRef = $InputClusters[$i]
+	$variant =~ /(\w+)\:\D\.(\D+\d+)\D/g;
+	my $GeneName = $1;
+	my $MutName = $2;
 
 	foreach my $key (keys %{$this->{mutations}->{$variant}}) {
 		my @ChainRes = split(":", $key);
@@ -246,25 +260,32 @@ sub setFirstColors {
 			$fh->print( "\n" );
 			$fh->print( "color ".$currentColor.", (resi ".$res." and chain ".$chain.");\n" );
 			$fh->print( "show spheres, (resi ".$res." and chain ".$chain.");\n" );
-			$fh->print( "sele ".$ClusterArrayRef->[0].", (resi ".$res." and chain ".$chain.");\n" ); # add to the object named by the cluster ID
+			$fh->print( "sele ".$currentColor."_".$GeneName."_".$MutName."_".$chain.", (resi ".$res." and chain ".$chain.");\n" );
+			$fh->print( "sele ".$currentColor."_".$ClusterArrayRef->[0].", ".$currentColor."_".$GeneName."_".$MutName."_".$chain.";\n" ); # add to the object named by the cluster ID
 			$this->{mutations}->{$variant}->{$chain.":".$res} = 1; #$ClusterArrayRef->[6] = 1; # set as processed
+			$this->{ClusterColors}->{$ClusterArrayRef->[0]} = $currentColor; # To keep track of the color of a given cluster ID. Usefull in setting surfaces
 		}
 		elsif ($SecondDigit > 1) { # higher levels 
 			$fh->print( "\n" );  
 			if ( $ClusterArrayRef->[5] eq 2 ) { # this subcluster doesn't cover anything below it (no need to check PROCESSED)
 				$fh->print( "color ".$currentColor.", (resi ".$res." and chain ".$chain.");\n" );
 				$fh->print( "show spheres, (resi ".$res." and chain ".$chain.");\n" );
-				$fh->print( "sele ".$ClusterArrayRef->[0].", (resi ".$res." and chain ".$chain.");\n" );  # add to the object named by the cluster ID
+				$fh->print( "sele ".$currentColor."_".$GeneName."_".$MutName."_".$chain.", (resi ".$res." and chain ".$chain.");\n" );
+				$fh->print( "sele ".$currentColor."_".$ClusterArrayRef->[0].", ".$currentColor."_".$GeneName."_".$MutName."_".$chain.";" );  # add to the object named by the cluster ID
 				$this->{mutations}->{$variant}->{$chain.":".$res} = 1; #$ClusterArrayRef->[6] = 1; # set as processed
+				$this->{ClusterColors}->{$ClusterArrayRef->[0]} = $currentColor; # To keep track of the color of a given cluster ID. Usefull in setting surfaces
 			}
 			elsif ( $ClusterArrayRef->[5] ne 2 ) {
 				if ($this->{mutations}->{$variant}->{$chain.":".$res} == 0) {
 					$fh->print( "color ".$currentColor.", (resi ".$res." and chain ".$chain.");\n" );
 					$fh->print( "show spheres, (resi ".$res." and chain ".$chain.");\n" );
-					$fh->print( "sele ".$ClusterArrayRef->[0].", ( resi ".$res." and chain ".$chain.");\n" ); # add to the object named by the cluster ID
+					$fh->print( "sele ".$currentColor."_".$GeneName."_".$MutName."_".$chain.", (resi ".$res." and chain ".$chain.");\n" );
+					$fh->print( "sele ".$currentColor."_".$ClusterArrayRef->[0].", ".$currentColor."_".$GeneName."_".$MutName."_".$chain."\n" ); # add to the object named by the cluster ID
 					$this->{mutations}->{$variant}->{$chain.":".$res} = 1; #$ClusterArrayRef->[6] = 1; # set as processed
+					$this->{ClusterColors}->{$ClusterArrayRef->[0]} = $currentColor; # To keep track of the color of a given cluster ID. Usefull in setting surfaces
 				}
-				else {$fh->print( "sele ".$ClusterArrayRef->[0].", ( resi ".$res." and chain ".$chain.");\n" );} # add to the object named by the cluster ID
+				else {$fh->print( "sele ".$currentColor."_".$ClusterArrayRef->[0].", ( resi ".$res." and chain ".$chain.");\n" );} # add to the object named by the cluster ID
+				$this->{ClusterColors}->{$ClusterArrayRef->[0]} = $currentColor; # To keep track of the color of a given cluster ID. Usefull in setting surfaces
 				
 			}
 		}		
