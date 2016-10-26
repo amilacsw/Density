@@ -12,7 +12,7 @@ use List::Util qw[min max];
 # quit unless we have the correct number of command-line args
 my $num_args = $#ARGV + 1;
 if ($num_args != 3) {
-	print "\nUsage: OpticsWithR.pl epsilon MinPts InputFileName_in_Test/\n\n";
+	print "\nUsage: OpticsWithR.pl epsilon MinPts InputFileName_in_./Test/\n\n";
     exit;
 }
 
@@ -38,23 +38,59 @@ while (my $line = <IN>) {
 	$SetOfNodes{$key1}{distances}{$value1} = $dis;
 	$SetOfNodes{$value1}{distances}{$key1} = $dis;
 }
+###### For variants in the same residue and chain 
+
+foreach my $key ( keys %SetOfNodes ) {
+	#print "key= $key\n";
+	$key =~ /(\w+)\:\D\.(\D+\d+)\D/g;
+	my $keyGene = $1;
+	my $keyRes = $2;
+	my @hits = grep(/$keyGene\:\D\.$keyRes\D/g, keys %SetOfNodes);
+	#print Dumper \@hits;
+	foreach my $hit (@hits) {
+		if ( $hit ne $key ) {
+			$SetOfNodes{$key}{distances}{$hit} = "0";
+			$SetOfNodes{$hit}{distances}{$key} = "0";
+		}
+	}
+}
 
 foreach my $i (keys %SetOfNodes) {
 	$SetOfNodes{$i}{processInfo} = "False";
 }
 
-#print Dumper \%SetOfNodes;
+print Dumper \%SetOfNodes;
 print "Number of Objects = ";
 print scalar keys %SetOfNodes;
 print "\n";
 
+my @SetOfCores;
+my @SetOfEdges;
+foreach my $key ( keys %SetOfNodes ) {
+	if ( scalar keys $SetOfNodes{$key}{distances} >= $MinPts ) {
+		push @SetOfCores, $key;
+	}
+	else {
+		push @SetOfEdges, $key;
+	}
+}
+my @SetOfCoresThenEdges = ( @SetOfCores, @SetOfEdges );
+
+# print "SetofCores=";
+# print Dumper \@SetOfCores;
+# print "SetofEdges=";
+# print Dumper \@SetOfEdges;
+# #push @SetofCores, @SetofEdges;
+# print "both=";
+# print Dumper \@SetOfCoresThenEdges;
 ###########################################################
 
 my @OrderedNodes;
 
 ################# Main OPTICS function ####################
 
-foreach my $p (keys %SetOfNodes) {
+foreach my $p ( @SetOfCoresThenEdges ) {
+	print "first p=$p\n";
 	if ($SetOfNodes{$p}{processInfo} =~ "False") {
 		########## Expand Cluster Order ###########
 		my %neighbors; # is a hash with keys neigbor indices whose values are mutual separations
@@ -64,23 +100,30 @@ foreach my $p (keys %SetOfNodes) {
 		my $RD = undef;
 		my $CD;
 		$CD = GetCoreDistance(\%neighbors,$MinPts);
+		print "p=$p and ";
+		print "CD=$CD\n";
 		push @OrderedNodes, [$p,$RD,$CD]; # write to the file 
 		if (defined $CD) {
 			OrderSeedsUpdate(\%neighbors,$p,$CD, \%OrderSeeds, \%SetOfNodes);
-			#print "For p=$p, OrderSeeds= \n";
-			#print Dumper \%OrderSeeds;
+			print "For p=$p, OrderSeeds= \n";
+			print Dumper \%OrderSeeds;
 			while (scalar keys %OrderSeeds != 0) {
 				my @SeedKeys = sort { $OrderSeeds{$a} <=> $OrderSeeds{$b} } keys %OrderSeeds;
 				my @SeedValues = @OrderSeeds{@SeedKeys};
 				my $CurrentObject =  $SeedKeys[0]; # CurrentObject is the object having the least RD in OrderSeeds
+				print "\n\n current object= $CurrentObject\t neighbors=";
 				%neighbors = %{GetNeighbors($CurrentObject,$Epsilon,\%SetOfNodes)};
+				print Dumper \%neighbors;
+				#print Dumper $SetOfNodes{$CurrentObject}{distances};
 				$SetOfNodes{$CurrentObject}{processInfo} = "True"; # set as processed
 				$RD = $SeedValues[0];
 				$CD = GetCoreDistance(\%neighbors,$MinPts);
 				push @OrderedNodes, [$CurrentObject,$RD,$CD]; # write to the file 
 				delete $OrderSeeds{$CurrentObject};
 				if (defined $CD) {
+					print "\tCurrent object is a core.\n Updated Order seeds list\n\t";
 					OrderSeedsUpdate(\%neighbors,$CurrentObject,$CD, \%OrderSeeds, \%SetOfNodes);
+					print Dumper \%OrderSeeds;
 				}
 			}
 		}
