@@ -282,6 +282,48 @@ for (my $i = 0; $i < scalar @ClusterArray; $i++) {
 
 close (OUT);
 
+########################################
+# Shiny File
+
+my $OutFile3 = new FileHandle;
+my $outFilename3 = "./Results/$ARGV[0].clusters.shiny.R";
+$OutFile3->open( $outFilename3 , "w"  );
+
+$OutFile3->print( "library(shiny)\n" );
+$OutFile3->print( "ui <- basicPage(
+  plotOutput(\"plot1\",click = \"plot_click\", hover = \"plot_hover\", brush = \"plot_brush\" ,  height = 900),
+  verbatimTextOutput(\"info\")
+)\n" );
+$OutFile3->print( "y = read.table(\"./$ARGV[0]\")\n
+z = read.table(\"./$ARGV[0].SuperClustersID.plot\")\n" );
+$OutFile3->print( "RD<-y[[2]]\nID<-y[[1]]\nx0<-z[[1]]\ny0<-z[[3]]\nx1<-z[[2]]+1\ny1<-z[[3]]\nCluster<-z[[5]]\n" );
+$OutFile3->print( "server <- function(input, output) {\n  output\$plot1 <- renderPlot({\n	barplot(RD,names.arg=ID,main=\"Reachability Plot:Epsilon=8 MinPts=4\",col=\"Red\", cex.names=0.6,border=NA, space=0, las=2, ylab=\"Reachabilty Distance (A)\")\n	segments (x0,y0,x1,y1)\n
+	text(x1+2,y0,Cluster, cex=1)\n
+  })\n" );
+
+$OutFile3->print( "  output\$info <- renderText({\n
+    RDID_str <- function(e) {\n
+      if (is.null(e\$x)) return(\"\")\n
+      name <- ID[round(e\$x+1)]\n
+      RDval <- RD[round(e\$x+1)]\n
+      paste0(\"ID=\", name, \"  RD=\", RDval)\n
+    }\n
+    RDID_range_str <- function(e) {\n
+      if(is.null(e)) return(\"NULL\\n\")\n
+      selrange <- ID[c(round(e\$xmin+1):round(e\$xmax+1))]\n
+      paste0(selrange)\n
+    }\n
+    paste0(\n
+      \"   hover:\", RDID_str(input\$plot_hover),\n
+      \"\\n\", RDID_range_str(input\$plot_brush)\n
+    )\n
+  })\n
+}\n" );
+
+$OutFile3->print( "shinyApp(ui, server)" );
+
+$OutFile3->close();
+
 
 ############################  Plotting  #################################
 
