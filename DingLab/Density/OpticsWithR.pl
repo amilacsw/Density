@@ -59,7 +59,7 @@ foreach my $i (keys %SetOfNodes) {
 	$SetOfNodes{$i}{processInfo} = "False";
 }
 
-print Dumper \%SetOfNodes;
+#print Dumper \%SetOfNodes;
 print "Number of Objects = ";
 print scalar keys %SetOfNodes;
 print "\n";
@@ -90,7 +90,7 @@ my @OrderedNodes;
 ################# Main OPTICS function ####################
 
 foreach my $p ( @SetOfCoresThenEdges ) {
-	print "first p=$p\n";
+	#print "first p=$p\n";
 	if ($SetOfNodes{$p}{processInfo} =~ "False") {
 		########## Expand Cluster Order ###########
 		my %neighbors; # is a hash with keys neigbor indices whose values are mutual separations
@@ -100,20 +100,20 @@ foreach my $p ( @SetOfCoresThenEdges ) {
 		my $RD = undef;
 		my $CD;
 		$CD = GetCoreDistance(\%neighbors,$MinPts);
-		print "p=$p and ";
-		print "CD=$CD\n";
+		#print "p=$p and ";
+		#print "CD=$CD\n";
 		push @OrderedNodes, [$p,$RD,$CD]; # write to the file 
 		if (defined $CD) {
 			OrderSeedsUpdate(\%neighbors,$p,$CD, \%OrderSeeds, \%SetOfNodes);
-			print "For p=$p, OrderSeeds= \n";
-			print Dumper \%OrderSeeds;
+			#print "For p=$p, OrderSeeds= \n";
+			#print Dumper \%OrderSeeds;
 			while (scalar keys %OrderSeeds != 0) {
 				my @SeedKeys = sort { $OrderSeeds{$a} <=> $OrderSeeds{$b} } keys %OrderSeeds;
 				my @SeedValues = @OrderSeeds{@SeedKeys};
 				my $CurrentObject =  $SeedKeys[0]; # CurrentObject is the object having the least RD in OrderSeeds
-				print "\n\n current object= $CurrentObject\t neighbors=";
+				#print "\n\n current object= $CurrentObject\t neighbors=";
 				%neighbors = %{GetNeighbors($CurrentObject,$Epsilon,\%SetOfNodes)};
-				print Dumper \%neighbors;
+				#print Dumper \%neighbors;
 				#print Dumper $SetOfNodes{$CurrentObject}{distances};
 				$SetOfNodes{$CurrentObject}{processInfo} = "True"; # set as processed
 				$RD = $SeedValues[0];
@@ -121,9 +121,9 @@ foreach my $p ( @SetOfCoresThenEdges ) {
 				push @OrderedNodes, [$CurrentObject,$RD,$CD]; # write to the file 
 				delete $OrderSeeds{$CurrentObject};
 				if (defined $CD) {
-					print "\tCurrent object is a core.\n Updated Order seeds list\n\t";
+					#print "\tCurrent object is a core.\n Updated Order seeds list\n\t";
 					OrderSeedsUpdate(\%neighbors,$CurrentObject,$CD, \%OrderSeeds, \%SetOfNodes);
-					print Dumper \%OrderSeeds;
+					#print Dumper \%OrderSeeds;
 				}
 			}
 		}
