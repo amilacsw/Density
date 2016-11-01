@@ -5,7 +5,7 @@ use LWP::Simple;
 use FileHandle;
 use Data::Dumper qw(Dumper);
 use Scalar::Util qw(looks_like_number);
-use List::Util qw[min max];
+use List::Util qw[min max shuffle];
 
 ######################## Command Line Arguments ################################
 
@@ -74,6 +74,8 @@ foreach my $key ( keys %SetOfNodes ) {
 		push @SetOfEdges, $key;
 	}
 }
+@SetOfCores = shuffle @SetOfCores;
+@SetOfEdges = shuffle @SetOfEdges;
 my @SetOfCoresThenEdges = ( @SetOfCores, @SetOfEdges );
 
 # print "SetofCores=";
