@@ -260,6 +260,7 @@ open (OUT, ">$OutFile1");
 
 for (my $i = 0; $i < scalar @ClusterArray; $i++) {
 	print OUT "$ClusterArray[$i][0]\t$ClusterArray[$i][1]\t$ClusterArray[$i][2]\t$ClusterArray[$i][3]\t$ClusterArray[$i][4]\n";
+	# start--stop--cutoff--clusterAvg--clusterID
 }
 close (OUT);
 

@@ -30,7 +30,7 @@ for (my $file = 1; $file < 5; $file++) {
 		if ( not $line =~ /Cluster/ ) {
 			chomp $line;
 			my @tabs1 = split(/\t/,$line);
-			push @InitialSet1, [$tabs1[2],$tabs1[0]];
+			push @InitialSet1, [$tabs1[2],$tabs1[0],$tabs1[8]];
 		}
 	}
 
@@ -40,9 +40,11 @@ for (my $file = 1; $file < 5; $file++) {
 
 	open(IN, "<$inputFile2") || die "Can't open $inputFile2: $!";
 	while (my $line = <IN>) {
-		chomp $line;
-		my @tabs2 = split(/\t/,$line);
-		push @InitialSet2, [$tabs2[2],$tabs2[0]];
+		if ( not $line =~ /Cluster/ ) {
+			chomp $line;
+			my @tabs2 = split(/\t/,$line);
+			push @InitialSet2, [$tabs2[2],$tabs2[0],$tabs2[8]];
+		}
 	}
 	close(IN);
 
@@ -65,6 +67,22 @@ for (my $file = 1; $file < 5; $file++) {
 		}
 	}
 
+	#### Recording clusterIds and their variants for 1&2
+
+	foreach my $variant (keys $Variants) {
+		my @first = split(":", $Variants->{$variant}->{"1"});
+		my @second = split(":", $Variants->{$variant}->{"2"});
+
+		foreach my $keyfirst (@first) {
+			$Variants->{"Clusters-ID"}->{"1"}->{$keyfirst}->{$variant} = 0;
+		}
+		foreach my $keysec (@second) {
+			$Variants->{"Clusters-ID"}->{"2"}->{$keysec}->{$variant} = 0;
+		}
+	}
+
+	#print Dumper \@InitialSet1;
+	#### 
 	#print Dumper $Variants;
 
 	my $OutFile1 = "./Results/Compare$file-$secondfile";
@@ -107,11 +125,38 @@ for (my $file = 1; $file < 5; $file++) {
 						}
 					}
 
-					if ($numberOfobj != $n) {
-						print OUT "Looks fine!\n";
+					if (scalar keys $Variants->{$first[$i]}->{"1"} == 0 && scalar keys $Variants->{$first[$i]}->{"2"} == 0) {
+						print OUT "Looks fine, Same cluster different names!\n";
 					}
 					else {
 						print OUT "\t Looks suspicious... $first[$i]--$second[$i]\n";
+						
+						if (scalar keys $Variants->{$first[$i]}->{"1"} != 0) {
+							foreach my $key (keys $Variants->{$first[$i]}->{"1"}) {
+								for (my $p = $i+1; $p < scalar @second; $p++) {
+									if (exists $Variants->{"Clusters-ID"}->{"2"}->{$second[$p]}->{$key}) {
+										my $Avg1 = GetAvgDensity($key, \@InitialSet1, $first[$i]);
+										my $Avg2 = GetAvgDensity($key, \@InitialSet2, $second[$p]);
+										my $AvgDiff = $Avg2-$Avg1;
+										print OUT "\tvariant $key was extra in 1, but found in 2--$second[$p], with averages now at $Avg1, then appears at $Avg2, with delta $AvgDiff\n";
+										last;
+									}
+								}
+							}
+						}
+						if (scalar keys $Variants->{$first[$i]}->{"2"} != 0) {
+							foreach my $key (keys $Variants->{$first[$i]}->{"2"}) {
+								for (my $p = $i+1; $p < scalar @first; $p++) {
+									if (exists $Variants->{"Clusters-ID"}->{"1"}->{$first[$p]}->{$key}) {
+										my $Avg1 = GetAvgDensity($key, \@InitialSet2, $second[$i]);
+										my $Avg2 = GetAvgDensity($key, \@InitialSet1, $first[$p]);
+										my $AvgDiff = $Avg2-$Avg1;
+										print OUT "\tvariant $key was extra in 2, but found in 1--$first[$p], with averages now at $Avg1, then appears at $Avg2, with delta $AvgDiff\n";
+										last;
+									}
+								}
+							}
+						}
 					}
 				}
 			}
@@ -123,4 +168,14 @@ for (my $file = 1; $file < 5; $file++) {
 	print OUT "Variants Hash=\n";
 	print OUT Dumper $Variants;
 }
-
+sub GetAvgDensity {
+	my ($mutation,$IniRef,$cluster)=@_;
+	my $AvgDensity = 0;
+	for (my $i = 0; $i < scalar @$IniRef; $i++) {
+		if ($IniRef->[$i]->[0] eq $mutation && $IniRef->[$i]->[1] eq $cluster) {
+			$AvgDensity = $IniRef->[$i]->[2];
+			last;
+		}
+	}
+	return $AvgDensity;
+}
