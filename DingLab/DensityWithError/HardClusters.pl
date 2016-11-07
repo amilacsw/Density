@@ -56,30 +56,19 @@ for (my $i = 0; $i < scalar @InitialCuts; $i++) {
 MainOPTICS($this, "met.pairwise");
 #print Dumper $this->{CurrentRDarray};
 
-# Identify super clusters:
+
 
 for (my $run = 1; $run < 2; $run++) {
-	my $scs = 0; # super cluster start
-	for (my $i = 1; $i < scalar @{$this->{CurrentRDarray}}; $i++) {
-		#print "i=$i\n";
-		if ( ${$this->{CurrentRDarray}}[$i][1] == 10 ) {
-			#print "RD($i)=10\n";
-			$scs = $i;	
-		}
-		else {
-			$this->{"CurrentSuperClusters"}->{$scs} = $i;
-		}	
-	}
-	print "\nCurrent SC=\n";
-	print Dumper $this->{CurrentSuperClusters};
 
-	foreach my $CurrentSCstart (keys $this->{CurrentSuperClusters}) {
+	GetSuperClusters($this, $this->{CurrentRDarray}); # Identify super clusters:
+
+	foreach my $CurrentSCstart (keys $this->{CurrentSuperClusters}) { # finding matching super clusters
 		#if ($this->{CurrentSuperClusters}->{$CurrentSCstart} - $CurrentSCstart >= $MinPts) {
 			for (my $i = $CurrentSCstart; $i <= $this->{CurrentSuperClusters}->{$CurrentSCstart}; $i++) {
 				# print "current variant=${$this->{CurrentRDarray}}[$i][0]\n";
 				# print "In Old=\n";
 				# print Dumper keys %{$this->{Variants}->{${$this->{CurrentRDarray}}[$i][0]}->{run0}};
-				my @SCArray = keys %{$this->{Variants}->{${$this->{CurrentRDarray}}[$i][0]}->{run0}};
+				my @SCArray = keys %{$this->{Variants}->{${$this->{CurrentRDarray}}[$i][0]}->{run0}}; #SCArray will only contain one element
 				my $TotHits;
 				if (exists $this->{SuperClusterMatching}->{$CurrentSCstart}->{$SCArray[0]}) {
 					$TotHits = $this->{SuperClusterMatching}->{$CurrentSCstart}->{$SCArray[0]};
@@ -91,15 +80,28 @@ for (my $run = 1; $run < 2; $run++) {
 				$this->{"SuperClusterMatching"}->{$CurrentSCstart}->{$SCArray[0]} = $TotHits;
 			}			
 		#}
+		
 		my @SCmatchArray = sort { $this->{SuperClusterMatching}->{$CurrentSCstart}->{$a} <=> $this->{SuperClusterMatching}->{$CurrentSCstart}->{$b} } keys %{$this->{SuperClusterMatching}->{$CurrentSCstart}};
-		my $SCmatch = pop @SCmatchArray;
-		print "SC map= $CurrentSCstart\t$SCmatch\n";
-
+		my $SCmatch = pop @SCmatchArray; # this is necessary because sometimes super cluster membership changes at low densities
+			#print "SC map= $CurrentSCstart\t$SCmatch\n";
+		if ($SCmatch ne '') {
+			$this->{"SuperClusterMap"}->{$SCmatch}->{$CurrentSCstart} = $this->{"CurrentSuperClusters"}->{$CurrentSCstart};
+		}
 	}
 
-}
+	# Perform clustering at initial epsilon cuts
+	foreach my $SCID (keys $this->{InitialCuts}) {
+		foreach my $levelID (keys $this->{InitialCuts}->{$SCID}) {
+			my $SubID = 0;
+			
+		}
+	}
+
+} # end of run
+
 print "SC matching\n";
-print Dumper $this->{"SuperClusterMatching"};
+print Dumper $this->{SuperClusterMatching};
+print Dumper $this->{SuperClusterMap};
 
 
 
@@ -107,11 +109,28 @@ print Dumper $this->{"SuperClusterMatching"};
 ##########################  Functions  #############################
 ####################################################################
 
-# sub MapSuperClusters {
+# sub GetSuperClusterMapping {
 # 	my $this = @_;
 
-# 	foreach my $CurrentSCstart (keys $this->{CurrentSuperClusters})
+
 # }
+
+sub GetSuperClusters { # Identify super clusters:
+	my ($this, $arrayRef) = @_;
+
+	my $scs = 0; # super cluster start
+	for (my $i = 1; $i < scalar @{$arrayRef}; $i++) {
+		#print "i=$i\n";
+		if ( ${$arrayRef}[$i][1] == 10 ) {
+			#print "RD($i)=10\n";
+			$scs = $i;	
+		}
+		else {
+			$this->{"CurrentSuperClusters"}->{$scs} = $i;
+		}	
+	}
+	return 1;
+}
 
 sub MainOPTICS {
 	my ($this, $Pairwisefile)=@_;
