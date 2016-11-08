@@ -53,12 +53,14 @@ for (my $i = 0; $i < scalar @InitialCuts; $i++) {
 ################################################################################
 
 #print "\nOrderedNodes array=\n";
-MainOPTICS($this, "met.pairwise");
+
 #print Dumper $this->{CurrentRDarray};
 
 
 
 for (my $run = 1; $run < 2; $run++) {
+
+	MainOPTICS($this, "met.pairwise"); # Generate a random ordred RD set (random OPTICS)
 
 	GetSuperClusters($this, $this->{CurrentRDarray}); # Identify super clusters:
 
@@ -90,20 +92,30 @@ for (my $run = 1; $run < 2; $run++) {
 	}
 
 	# Perform clustering at initial epsilon cuts
-	foreach my $SCID (keys $this->{InitialCuts}) {
-		foreach my $levelID (keys $this->{InitialCuts}->{$SCID}) {
-			my $SubID = 0;
-			
-		}
-	}
+	GetSubClusters($this, $MinPts, $run);
 
+	my $OrderedFile1 = "./Results/runs/$run.RD.out";
+	open (OUT, ">$OrderedFile1");
+	for (my $i = 0; $i < scalar @{$this->{CurrentRDarray}}; $i++) {
+		my $ele1 = ${$this->{CurrentRDarray}}[$i][0];
+		my $ele2 = ${$this->{CurrentRDarray}}[$i][1];
+		print OUT "$ele1\t$ele2\n";
+	}
+	close (OUT);
+
+
+	system ("Rscript BruteForceClustersLines.R ./Results/runs/$run.RD.out ./Results/runs/$run.clusters ./Results/runs/$run.pdf $Epsilon $MinPts");
 } # end of run
 
-print "SC matching\n";
+print "SC matching=\n";
 print Dumper $this->{SuperClusterMatching};
+print "SC map=\n";
 print Dumper $this->{SuperClusterMap};
+print "SubClusters=\n";
+print Dumper $this->{SubClusters};
 
 
+print "Done.\n";
 
 ####################################################################
 ##########################  Functions  #############################
@@ -114,6 +126,43 @@ print Dumper $this->{SuperClusterMap};
 
 
 # }
+
+sub GetSubClusters {
+	my ($this, $MinPts, $run) = @_;
+	my $OrderedFile2 = "./Results/runs/$run.clusters";
+	open (OUT, ">$OrderedFile2");
+	foreach my $SCID (keys $this->{InitialCuts}) {
+		foreach my $levelID (keys $this->{InitialCuts}->{$SCID}) {
+			my $SubID = 1;
+			my $EpsilonCut = $this->{InitialCuts}->{$SCID}->{$levelID};
+			my @nStartArray = keys $this->{SuperClusterMap}->{$SCID};
+			my $nStart = shift @nStartArray;
+			my $n = $nStart;
+			my $counter = 0;
+			my $s = $nStart;
+			while ($n <= $this->{SuperClusterMap}->{$SCID}->{$nStart}) {
+				if (${$this->{CurrentRDarray}}[$n][1] < $EpsilonCut) {
+					$counter++;
+					if ($counter >= $MinPts) {
+						$this->{SubClusters}->{$SCID}->{$levelID}->{$s} = $n;
+					}
+					$n++;
+				}
+				else {
+					$s = $n;
+					$counter = 0;
+					$n++;
+				}
+			}
+			foreach my $start1 (keys %{$this->{SubClusters}->{$SCID}->{$levelID}}) {
+				my $stop1 = $this->{SubClusters}->{$SCID}->{$levelID}->{$start1};
+				print OUT "$start1\t$stop1\t$EpsilonCut\n";
+			}
+		}
+	}
+
+	close (OUT);
+}
 
 sub GetSuperClusters { # Identify super clusters:
 	my ($this, $arrayRef) = @_;
