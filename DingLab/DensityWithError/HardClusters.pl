@@ -11,8 +11,8 @@ use List::Util qw[min max shuffle];
 
 # quit unless we have the correct number of command-line args
 my $num_args = $#ARGV + 1;
-if ($num_args != 3) {
-    print "\nUsage: HardClusters.pl RD.*.clusters_in_./Results Epsilon MinPts\n\n";
+if ($num_args != 4) {
+    print "\nUsage: HardClusters.pl RD.*.clusters_in_./Results Epsilon MinPts Pairwisefile_in_./Test\n\n";
     exit;
 }
 
@@ -44,6 +44,9 @@ for (my $i = 0; $i < scalar @InitialCuts; $i++) {
 	if ($2 != 0) {
 		$this->{"InitialCuts"}->{$1}->{$2} = $InitialCuts[$i][3];
 	}
+	else {
+		$this->{"InitialCuts"}->{$1}->{$2} = 10;
+	}
 	$this->{"Variants"}->{$InitialCuts[$i][1].":".$InitialCuts[$i][2]}->{"run0"}->{$1}->{$2}->{$3} = $InitialCuts[$i][4];
 	$this->{"Memberships"}->{$1}->{$2}->{$3}->{$InitialCuts[$i][1].":".$InitialCuts[$i][2]} = 1;
 }
@@ -60,11 +63,85 @@ for (my $i = 0; $i < scalar @InitialCuts; $i++) {
 
 for (my $run = 1; $run < 2; $run++) {
 
-	MainOPTICS($this, "met.pairwise"); # Generate a random ordred RD set (random OPTICS)
+	MainOPTICS($this, "$ARGV[3]"); # Generate a random ordred RD set (random OPTICS)
 
-	GetSuperClusters($this, $this->{CurrentRDarray}); # Identify super clusters:
+	GetSuperClusters($this, $this->{CurrentRDarray}); # Identify super clusters
+	GetSuperClusterMapping($this); # Map new super clusters to the ones in run0
 
-	foreach my $CurrentSCstart (keys $this->{CurrentSuperClusters}) { # finding matching super clusters
+	GetSubClusters($this, $MinPts, $run); # Perform clustering at initial epsilon cuts
+	GetSubClesterMapping($this); # Map new subclusters to the ones in run0
+
+	#writing to file and plotting
+	my $OrderedFile1 = "./Results/runs/$run.RD.out";
+	open (OUT, ">$OrderedFile1");
+	for (my $i = 0; $i < scalar @{$this->{CurrentRDarray}}; $i++) {
+		my $ele1 = ${$this->{CurrentRDarray}}[$i][0];
+		my $ele2 = ${$this->{CurrentRDarray}}[$i][1];
+		print OUT "$ele1\t$ele2\n";
+	}
+	close (OUT);
+
+
+	system ("Rscript BruteForceClustersLines.R ./Results/runs/$run.RD.out ./Results/runs/$run.clusters ./Results/runs/$run.pdf $Epsilon $MinPts");
+
+
+} # end of run
+
+# print "SC matching=\n";
+# print Dumper $this->{SuperClusterMatching};
+print "SC map=\n";
+print Dumper $this->{SuperClusterMap};
+print "SubClusters=\n";
+print Dumper $this->{SubClusters};
+# print "Initial cut=\n";
+# print Dumper $this->{InitialCuts};
+print "SubCluster Matching=\n";
+print Dumper $this->{SubClusterMatching};
+print "SubCluster Mapping=\n";
+print Dumper $this->{SubClusterMap};
+
+print "Done.\n";
+
+####################################################################
+##########################  Functions  #############################
+####################################################################
+
+sub GetSubClesterMapping {
+	my $this = shift @_;
+	
+	foreach my $SCID (keys $this->{SubClusters}) {
+		foreach my $levelID (keys $this->{SubClusters}->{$SCID}) {
+			my @DummyArray = keys %{$this->{SubClusters}->{$SCID}->{$levelID}}; # contains the start points of sub clusters at levelID
+			foreach my $nStart (@DummyArray) {
+				#my $nStart = shift @DummyArray;
+				my $nStop = $this->{SubClusters}->{$SCID}->{$levelID}->{$nStart};
+				for (my $i = $nStart; $i <= $nStop; $i++) {
+					my @DummyArray2 = keys %{$this->{Variants}->{${$this->{CurrentRDarray}}[$i][0]}->{run0}->{$SCID}->{$levelID}}; # contains only one element (subID)
+					my $TotHits;
+					if (exists $this->{SubClusterMatching}->{$SCID}->{$levelID}->{$nStart}->{$DummyArray2[0]}) {
+						$TotHits = $this->{SubClusterMatching}->{$SCID}->{$levelID}->{$nStart}->{$DummyArray2[0]};
+					}
+					else {
+						$TotHits = 0;
+					}
+					$TotHits++;
+					$this->{SubClusterMatching}->{$SCID}->{$levelID}->{$nStart}->{$DummyArray2[0]} = $TotHits;
+				}
+
+				my @SubMatchArray = sort { $this->{SubClusterMatching}->{$SCID}->{$levelID}->{$nStart}->{$a} <=> $this->{SubClusterMatching}->{$SCID}->{$levelID}->{$nStart}->{$b} } keys %{$this->{SubClusterMatching}->{$SCID}->{$levelID}->{$nStart}};
+				my $SubMatch = pop @SubMatchArray; # this is necessary because sometimes super cluster membership changes at low densities
+					#print "SC map= $CurrentSCstart\t$SCmatch\n";
+				if ($SubMatch ne '') {
+					$this->{"SubClusterMap"}->{$SCID}->{$levelID}->{$SubMatch}->{$nStart} = $this->{"SubClusters"}->{$SCID}->{$levelID}->{$nStart};
+				}
+			}	
+		}
+	}
+}
+
+sub GetSuperClusterMapping {
+	my $this = shift @_;
+	foreach my $CurrentSCstart (keys %{$this->{CurrentSuperClusters}}) { # finding matching super clusters
 		#if ($this->{CurrentSuperClusters}->{$CurrentSCstart} - $CurrentSCstart >= $MinPts) {
 			for (my $i = $CurrentSCstart; $i <= $this->{CurrentSuperClusters}->{$CurrentSCstart}; $i++) {
 				# print "current variant=${$this->{CurrentRDarray}}[$i][0]\n";
@@ -91,41 +168,7 @@ for (my $run = 1; $run < 2; $run++) {
 		}
 	}
 
-	# Perform clustering at initial epsilon cuts
-	GetSubClusters($this, $MinPts, $run);
-
-	my $OrderedFile1 = "./Results/runs/$run.RD.out";
-	open (OUT, ">$OrderedFile1");
-	for (my $i = 0; $i < scalar @{$this->{CurrentRDarray}}; $i++) {
-		my $ele1 = ${$this->{CurrentRDarray}}[$i][0];
-		my $ele2 = ${$this->{CurrentRDarray}}[$i][1];
-		print OUT "$ele1\t$ele2\n";
-	}
-	close (OUT);
-
-
-	system ("Rscript BruteForceClustersLines.R ./Results/runs/$run.RD.out ./Results/runs/$run.clusters ./Results/runs/$run.pdf $Epsilon $MinPts");
-} # end of run
-
-print "SC matching=\n";
-print Dumper $this->{SuperClusterMatching};
-print "SC map=\n";
-print Dumper $this->{SuperClusterMap};
-print "SubClusters=\n";
-print Dumper $this->{SubClusters};
-
-
-print "Done.\n";
-
-####################################################################
-##########################  Functions  #############################
-####################################################################
-
-# sub GetSuperClusterMapping {
-# 	my $this = @_;
-
-
-# }
+}
 
 sub GetSubClusters {
 	my ($this, $MinPts, $run) = @_;
