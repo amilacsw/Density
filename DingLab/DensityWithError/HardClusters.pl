@@ -11,8 +11,8 @@ use List::Util qw[min max shuffle];
 
 # quit unless we have the correct number of command-line args
 my $num_args = $#ARGV + 1;
-if ($num_args != 4) {
-    print "\nUsage: HardClusters.pl RD.*.clusters_in_./Results Epsilon MinPts Pairwisefile_in_./Test \n\n";
+if ($num_args != 5) {
+    print "\nUsage: HardClusters.pl RD.*.clusters_in_./Results Epsilon MinPts Pairwisefile_in_./Test Number_of_runs_needed \n\n";
     exit;
 }
 
@@ -20,6 +20,7 @@ my $inputFile1 = "./Results/$ARGV[0]";
 my $Epsilon = $ARGV[1];
 my $MinPts = $ARGV[2];
 my $inputRD = "./Results/RD.$Epsilon.$MinPts.$ARGV[3]";
+my $NumRuns = $ARGV[4];
 
 ##########################  Reading from RD.out  #############################
 
@@ -73,7 +74,7 @@ for (my $i = 0; $i < scalar @InitialCuts; $i++) {
 
 
 
-for (my $run = 1; $run < 2; $run++) {
+for (my $run = 1; $run < $NumRuns; $run++) {
 
 	MainOPTICS($this, "$ARGV[3]"); # Generate a random ordred RD set (random OPTICS)
 
@@ -95,6 +96,13 @@ for (my $run = 1; $run < 2; $run++) {
 	}
 	close (OUT);
 
+	# Clear things up
+	delete $this->{CurrentRDarray};
+	delete $this->{CurrentSuperClusters};
+	delete $this->{SuperClusterMatching};
+	delete $this->{SuperClusterMap};
+	delete $this->{SubClusters};
+	delete $this->{SubClusterMap};
 
 	system ("Rscript BruteForceClustersLines.R ./Results/runs/$run.RD.out ./Results/runs/$run.clusters ./Results/runs/$run.pdf $Epsilon $MinPts");
 
@@ -105,7 +113,7 @@ my $FinalDataFile1 = "./Results/DataOut";
 open (OUT, ">$FinalDataFile1");
 	print OUT "Variant\tProbability\tClusterID\n";
 
-	for (my $i = 0; $i < scalar @{$this->{CurrentRDarray}}; $i++) {
+	for (my $i = 0; $i < scalar @InitialRD; $i++) {
 		my $variant1 = $InitialRD[$i][0];
 
 		foreach my $SCID (keys $this->{Memberships}) {
@@ -113,7 +121,7 @@ open (OUT, ">$FinalDataFile1");
 				foreach my $SubID (keys $this->{Memberships}->{$SCID}->{$levelID}) {
 					if (exists $this->{Memberships}->{$SCID}->{$levelID}->{$SubID}->{$variant1}) {
 						my $Occurance1 = $this->{Memberships}->{$SCID}->{$levelID}->{$SubID}->{$variant1};
-						$Occurance1 = $Occurance1/2;
+						$Occurance1 = $Occurance1/$NumRuns;
 						print OUT "$variant1\t$Occurance1\t$SCID.$levelID.$SubID\n";
 					}
 				}
@@ -123,18 +131,18 @@ open (OUT, ">$FinalDataFile1");
 
 close (OUT);
 
-# print "SC matching=\n";
-# print Dumper $this->{SuperClusterMatching};
-print "SC map=\n";
-print Dumper $this->{SuperClusterMap};
-print "SubClusters=\n";
-print Dumper $this->{SubClusters};
-# print "Initial cut=\n";
-# print Dumper $this->{InitialCuts};
-print "SubCluster Matching=\n";
-print Dumper $this->{SubClusterMatching};
-print "SubCluster Mapping=\n";
-print Dumper $this->{SubClusterMap};
+# # print "SC matching=\n";
+# # print Dumper $this->{SuperClusterMatching};
+# print "SC map=\n";
+# print Dumper $this->{SuperClusterMap};
+# print "SubClusters=\n";
+# print Dumper $this->{SubClusters};
+# # print "Initial cut=\n";
+# # print Dumper $this->{InitialCuts};
+# print "SubCluster Matching=\n";
+# print Dumper $this->{SubClusterMatching};
+# print "SubCluster Mapping=\n";
+# print Dumper $this->{SubClusterMap};
 
 print "Memberships=\n";
 print Dumper $this->{Memberships};
