@@ -6,5 +6,4 @@ d$Variant <- factor(d$Variant, levels = d$Variant)
 
 sp <- ggplot(d, aes(x=Variant,y=ClusterID)) + geom_point(aes(size=Probability))
 
-sp+theme(axis.text.x=element_text(angle=90, size=8))
-
+sp+theme_bw() + theme(axis.text.x=element_text(angle=90, size=8))

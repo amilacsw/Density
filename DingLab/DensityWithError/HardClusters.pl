@@ -163,7 +163,7 @@ sub RecordMemberships {
 				my $nStart = shift @DummyArray;
 				my $nStop = $this->{SubClusterMap}->{$SCID}->{$levelID}->{$SubID}->{$nStart};
 				#print "$SCID\t$levelID\t$SubID\$nStart\n";
-				for (my $i = $nStart; $i < $nStop; $i++) {
+				for (my $i = $nStart; $i <= $nStop; $i++) {
 					my $Occurance;
 					if (exists $this->{Memberships}->{$SCID}->{$levelID}->{$SubID}->{${$this->{CurrentRDarray}}[$i][0]}) {
 						$Occurance = $this->{Memberships}->{$SCID}->{$levelID}->{$SubID}->{${$this->{CurrentRDarray}}[$i][0]};
