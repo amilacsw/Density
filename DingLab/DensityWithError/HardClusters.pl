@@ -12,18 +12,20 @@ use List::Util qw[min max shuffle];
 # quit unless we have the correct number of command-line args
 my $num_args = $#ARGV + 1;
 if ($num_args != 4) {
-    print "\nUsage: HardClusters.pl RD.*.clusters_in_./Results Epsilon MinPts Pairwisefile_in_./Test\n\n";
+    print "\nUsage: HardClusters.pl RD.*.clusters_in_./Results Epsilon MinPts Pairwisefile_in_./Test \n\n";
     exit;
 }
 
 my $inputFile1 = "./Results/$ARGV[0]";
 my $Epsilon = $ARGV[1];
 my $MinPts = $ARGV[2];
+my $inputRD = "./Results/RD.$Epsilon.$MinPts.$ARGV[3]";
 
 ##########################  Reading from RD.out  #############################
 
 my $this = {};
 my @InitialCuts;
+my @InitialRD;
 
 open(IN, "<$inputFile1") || die "Can't open $inputFile1: $!";
 while (my $line = <IN>) {
@@ -33,6 +35,16 @@ while (my $line = <IN>) {
 		push @InitialCuts, [$tabs2[0],$tabs2[1],$tabs2[2],$tabs2[7],$tabs2[8],$tabs2[9]];
 		# Cluster	Gene/Drug	Mutation/Gene	Epsilon_prime	Avg_density	 Covering_clusters
 	}
+}
+
+open(IN, "<$inputRD") || die "Can't open $inputRD: $!";
+while (my $line = <IN>) {
+	
+	chomp $line;
+	my @tabs3 = split(/\t/,$line);
+	push @InitialRD, [$tabs3[0],$tabs3[1]];
+	# variant  RD
+	
 }
 
 ###############################################################################
@@ -71,6 +83,8 @@ for (my $run = 1; $run < 2; $run++) {
 	GetSubClusters($this, $MinPts, $run); # Perform clustering at initial epsilon cuts
 	GetSubClesterMapping($this); # Map new subclusters to the ones in run0
 
+	RecordMemberships($this); # if exists increase the number, else add to the list
+
 	#writing to file and plotting
 	my $OrderedFile1 = "./Results/runs/$run.RD.out";
 	open (OUT, ">$OrderedFile1");
@@ -87,6 +101,28 @@ for (my $run = 1; $run < 2; $run++) {
 
 } # end of run
 
+my $FinalDataFile1 = "./Results/DataOut";
+open (OUT, ">$FinalDataFile1");
+	print OUT "Variant\tProbability\tClusterID\n";
+
+	for (my $i = 0; $i < scalar @{$this->{CurrentRDarray}}; $i++) {
+		my $variant1 = $InitialRD[$i][0];
+
+		foreach my $SCID (keys $this->{Memberships}) {
+			foreach my $levelID (keys $this->{Memberships}->{$SCID}) {	
+				foreach my $SubID (keys $this->{Memberships}->{$SCID}->{$levelID}) {
+					if (exists $this->{Memberships}->{$SCID}->{$levelID}->{$SubID}->{$variant1}) {
+						my $Occurance1 = $this->{Memberships}->{$SCID}->{$levelID}->{$SubID}->{$variant1};
+						$Occurance1 = $Occurance1/2;
+						print OUT "$variant1\t$Occurance1\t$SCID.$levelID.$SubID\n";
+					}
+				}
+			}
+		}
+	}
+
+close (OUT);
+
 # print "SC matching=\n";
 # print Dumper $this->{SuperClusterMatching};
 print "SC map=\n";
@@ -100,11 +136,42 @@ print Dumper $this->{SubClusterMatching};
 print "SubCluster Mapping=\n";
 print Dumper $this->{SubClusterMap};
 
+print "Memberships=\n";
+print Dumper $this->{Memberships};
+
 print "Done.\n";
 
 ####################################################################
 ##########################  Functions  #############################
 ####################################################################
+
+sub RecordMemberships {
+	my $this = shift @_;
+
+	foreach my $SCID (keys $this->{SubClusterMap}) {
+		foreach my $levelID (keys $this->{SubClusterMap}->{$SCID}) {	
+			foreach my $SubID (keys $this->{SubClusterMap}->{$SCID}->{$levelID}) {
+				my @DummyArray = keys $this->{SubClusterMap}->{$SCID}->{$levelID}->{$SubID};
+				my $nStart = shift @DummyArray;
+				my $nStop = $this->{SubClusterMap}->{$SCID}->{$levelID}->{$SubID}->{$nStart};
+				#print "$SCID\t$levelID\t$SubID\$nStart\n";
+				for (my $i = $nStart; $i < $nStop; $i++) {
+					my $Occurance;
+					if (exists $this->{Memberships}->{$SCID}->{$levelID}->{$SubID}->{${$this->{CurrentRDarray}}[$i][0]}) {
+						$Occurance = $this->{Memberships}->{$SCID}->{$levelID}->{$SubID}->{${$this->{CurrentRDarray}}[$i][0]};
+						$Occurance++;
+						$this->{Memberships}->{$SCID}->{$levelID}->{$SubID}->{${$this->{CurrentRDarray}}[$i][0]} = $Occurance;
+					}
+					else {
+						$Occurance = 1;
+						$this->{Memberships}->{$SCID}->{$levelID}->{$SubID}->{${$this->{CurrentRDarray}}[$i][0]} = $Occurance;
+					}
+				}
+			}
+		}
+	}
+
+}
 
 sub GetSubClesterMapping {
 	my $this = shift @_;
