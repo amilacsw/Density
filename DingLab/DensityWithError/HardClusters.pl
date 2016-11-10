@@ -96,20 +96,29 @@ for (my $run = 1; $run < $NumRuns; $run++) {
 	}
 	close (OUT);
 
-	# Clear things up
+	# print "SubClusters=\n";
+	# print Dumper $this->{SubClusters}->{0};
+	# print "SubCluster Matching=\n";
+	# print Dumper $this->{SubClusterMatching}->{0};
+	# print "SubCluster Mapping=\n";
+	# print Dumper $this->{SubClusterMap}->{0};
+	# print "\n-----------------------------------------------------------------\n";
+
+	# Clean up hashes specific to the current run
 	delete $this->{CurrentRDarray};
 	delete $this->{CurrentSuperClusters};
 	delete $this->{SuperClusterMatching};
 	delete $this->{SuperClusterMap};
 	delete $this->{SubClusters};
 	delete $this->{SubClusterMap};
+	delete $this->{SubClusterMatching};
 
 	system ("Rscript BruteForceClustersLines.R ./Results/runs/$run.RD.out ./Results/runs/$run.clusters ./Results/runs/$run.pdf $Epsilon $MinPts");
 
 
 } # end of run
 
-my $FinalDataFile1 = "./Results/DataOut";
+my $FinalDataFile1 = "./Results/ProbabilityData.$ARGV[3]";
 open (OUT, ">$FinalDataFile1");
 	print OUT "Variant\tProbability\tClusterID\n";
 
@@ -145,7 +154,9 @@ close (OUT);
 # print Dumper $this->{SubClusterMap};
 
 print "Memberships=\n";
-print Dumper $this->{Memberships};
+print Dumper $this->{Memberships}->{0};
+
+system ("Rscript MembershipProbability.R $FinalDataFile1");
 
 print "Done.\n";
 
@@ -204,7 +215,7 @@ sub GetSubClesterMapping {
 				}
 
 				my @SubMatchArray = sort { $this->{SubClusterMatching}->{$SCID}->{$levelID}->{$nStart}->{$a} <=> $this->{SubClusterMatching}->{$SCID}->{$levelID}->{$nStart}->{$b} } keys %{$this->{SubClusterMatching}->{$SCID}->{$levelID}->{$nStart}};
-				my $SubMatch = pop @SubMatchArray; # this is necessary because sometimes super cluster membership changes at low densities
+				my $SubMatch = pop @SubMatchArray; # this is necessary because sometimes sub cluster membership changes at low densities
 					#print "SC map= $CurrentSCstart\t$SCmatch\n";
 				if ($SubMatch ne '') {
 					$this->{"SubClusterMap"}->{$SCID}->{$levelID}->{$SubMatch}->{$nStart} = $this->{"SubClusters"}->{$SCID}->{$levelID}->{$nStart};
