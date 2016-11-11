@@ -11,5 +11,7 @@ sp <- ggplot(d, aes(x=Variant,y=ClusterID)) + geom_point(aes(colour = Probabilit
 
 #sp <- ggplot(d, aes(x=Variant,y=ClusterID)) + geom_point(aes(size=Probability))
 
-sp+theme_bw() + theme(axis.text.x=element_text(angle=90, size=6)) + ggtitle("Cluster Membership Probabilities")
-ggsave("./Results/ProbabilityPlot.pdf", width = 23.6, height = 13.3)
+sp+theme_bw() + theme(axis.text.x=element_text(angle=90, size=6)) + ggtitle(paste("Cluster Membership Probabilities for",args[2],"runs (",args[3],")"))
+ggsave(paste("./Results/",args[3],".ProbabilityPlot.pdf"), width = 23.6, height = 13.3)
+
+#args 1=ProbabilityData, 2=Number of runs, 3=Gene 

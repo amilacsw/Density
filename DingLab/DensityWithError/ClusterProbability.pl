@@ -181,7 +181,7 @@ close (OUT);
 print "Memberships=\n";
 print Dumper $this->{Memberships}->{0};
 
-system ("Rscript MembershipProbability.R $FinalDataFile1");
+system ("Rscript MembershipProbability.R $FinalDataFile1 $NumRuns $ARGV[3]");
 
 print "Done.\n";
 
