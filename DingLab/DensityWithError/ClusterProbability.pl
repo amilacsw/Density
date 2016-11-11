@@ -11,8 +11,8 @@ use List::Util qw[min max shuffle];
 
 # quit unless we have the correct number of command-line args
 my $num_args = $#ARGV + 1;
-if ($num_args != 5) {
-    print "\nUsage: HardClusters.pl RD.*.clusters_in_./Results Epsilon MinPts Pairwisefile_in_./Test Number_of_runs_needed \n\n";
+if ($num_args != 6) {
+    print "\nUsage: HardClusters.pl RD.*.clusters_in_./Results Epsilon MinPts Pairwisefile_in_./Test Number_of_runs_needed Probability_cut_off_percentage\n\n";
     exit;
 }
 
@@ -21,6 +21,7 @@ my $Epsilon = $ARGV[1];
 my $MinPts = $ARGV[2];
 my $inputRD = "./Results/RD.$Epsilon.$MinPts.$ARGV[3]";
 my $NumRuns = $ARGV[4];
+my $ProbCutOff = ($ARGV[5]/100)*$NumRuns;
 
 ##########################  Reading from RD.out  #############################
 
@@ -60,7 +61,8 @@ for (my $i = 0; $i < scalar @InitialCuts; $i++) {
 	else {
 		$this->{"InitialCuts"}->{$1}->{$2} = 10;
 	}
-	$this->{"Variants"}->{$InitialCuts[$i][1].":".$InitialCuts[$i][2]}->{"run0"}->{$1}->{$2}->{$3} = $InitialCuts[$i][4];
+	$this->{"Variants"}->{$InitialCuts[$i][1].":".$InitialCuts[$i][2]}->{"run0"}->{$1}->{$2}->{$3}->{"AverageDensity"} = $InitialCuts[$i][4];
+	$this->{"Variants"}->{$InitialCuts[$i][1].":".$InitialCuts[$i][2]}->{"run0"}->{$1}->{$2}->{$3}->{"CoveringClusters"} = $InitialCuts[$i][5];
 	$this->{"Memberships"}->{$1}->{$2}->{$3}->{$InitialCuts[$i][1].":".$InitialCuts[$i][2]} = 1;
 }
 
@@ -118,6 +120,7 @@ for (my $run = 1; $run < $NumRuns; $run++) {
 
 } # end of run
 
+# Data to generate the Cluster Membership Probability Plot
 my $FinalDataFile1 = "./Results/ProbabilityData.$ARGV[3]";
 open (OUT, ">$FinalDataFile1");
 	print OUT "Variant\tProbability\tClusterID\n";
@@ -137,7 +140,29 @@ open (OUT, ">$FinalDataFile1");
 			}
 		}
 	}
+close (OUT);
 
+# Clusters output file (will be used in the visual)
+my $FinalDataFile2 = "./Results/$Epsilon.$MinPts.$ARGV[3].Prob.$ARGV[5].clusters";
+open (OUT, ">$FinalDataFile2");
+	print OUT "Cluster\tGene/Drug\tMutation/Gene\tDegree_Connectivity\tCloseness_Centrality\tGeodesic_From_Centroid\tRecurrence\tEpsilon_prime\tAvg_density\tCovering_clusters\n";
+
+	for (my $SCID = 0; $SCID < scalar keys $this->{Memberships}; $SCID++) {
+		for (my $levelID = 0; $levelID < scalar keys $this->{Memberships}->{$SCID}; $levelID++) {
+			for (my $SubID = 0; $SubID < scalar keys $this->{Memberships}->{$SCID}->{$levelID}; $SubID++) {
+				foreach my $variant (keys %{$this->{Memberships}->{$SCID}->{$levelID}->{$SubID}}) {
+					if ($this->{Memberships}->{$SCID}->{$levelID}->{$SubID}->{$variant} >= $ProbCutOff) {
+						my $CurrentEpsilon = $this->{InitialCuts}->{$SCID}->{$levelID};
+						my $CurrentAvgDensity = $this->{Variants}->{$variant}->{run0}->{$SCID}->{$levelID}->{$SubID}->{AverageDensity};
+						my $CoveringClusters =  $this->{Variants}->{$variant}->{run0}->{$SCID}->{$levelID}->{$SubID}->{CoveringClusters};
+						$variant =~ /(\w+)\:(\D\.\D+\d+\D)/g;
+						print OUT "$SCID.$levelID.$SubID\t$1\t$2\t0\t0\t0\t0\t$CurrentEpsilon\t$CurrentAvgDensity\t$CoveringClusters\n";
+					}
+				}
+			}
+		}
+	}
+	
 close (OUT);
 
 # # print "SC matching=\n";
